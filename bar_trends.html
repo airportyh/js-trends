@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>JS Trends</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  
+  <link href='http://fonts.googleapis.com/css?family=Abril+Fatface' rel='stylesheet' type='text/css'>
+  <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+  <script src="./moment.js"></script>
+  <script src="./underscore.js"></script>
+
+</head>
+<body style="background-image: radial-gradient(circle farthest-corner at center, #f7fbfc 0%, #add9e4 100%)">
+
+<div id="canvas"></div>
+
+<script>
+  d3.json("/summary.json", function(data) {
+    console.log("data: ", data)
+    function xDomainFor(d){
+      return moment(d.date).format("YYYY/MM/DD")
+    }
+    var selection = ["jquery", "react"]
+    var chartWidth = 600
+    var chartHeight = 400
+    var svg = d3.select("#canvas").append("svg")
+                  .attr("width", chartWidth)
+                  .attr("height", chartHeight)
+                  
+    svg
+      .append("g")
+      .attr("transform", "translate(100,100)")
+
+    var x = d3.scale.ordinal().rangeBands([0, chartWidth], 0.4, 0.1)
+    var y = d3.scale.linear().range([chartHeight, 0])
+
+    
+    xDomain = _(data).map(function(d) {return moment(d.date).format("YYYY/MM/DD")})
+    tickDomain = []
+    step = Math.round(xDomain.length / 5)
+    for (i = 0; i <= xDomain.length; i += step) {
+      tickDomain.push(xDomain[i])
+    }
+
+    x.domain(xDomain);
+    y.domain([0, d3.max(data, function(d) { return d.summary[selection]; })]);
+
+    var xAxis = d3.svg.axis().scale(x).orient("bottom").tickValues(tickDomain)
+    var yAxis = d3.svg.axis().scale(y).orient("left")
+
+    svg.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + chartHeight + ")" )
+      .call(xAxis)
+      .selectAll("text")
+        .style("text-anchor", "end")
+        .attr("dx", "-.8em")
+        .attr("dy", ".15em")
+        .attr("transform", function(d) {
+            return "rotate(-65)" 
+        });
+
+    svg.append("g")
+      .attr("class", "y axis")
+      .call(yAxis)
+      .append("text")
+      .style("text-anchor", "end")
+
+    svg.selectAll("rect")
+      .data(data)
+      .enter()
+        .append("rect")
+        .style("fill", "#558ed5")
+        .attr("x", function(d){ return x(xDomainFor(d))})
+        .attr("width", x.rangeBand())
+        .attr("y", function(d){ return y(d.summary[selection])})
+        .attr("height", function(d) {return y(0) - y(d.summary[selection])})
+
+    svg.append("text")
+      .attr("x", 10)
+      .attr("y", 10)
+      .attr("class", "title")
+      .style("fill", "black")
+      .text (selection + " trends")
+
+  })
+
+</script>
+</body>
+</html>

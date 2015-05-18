@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+  <style>
+  
+  body {
+    font: 10px sans-serif;
+  }
+  
+  .axis path,
+  .axis line {
+    fill: none;
+    stroke: #000;
+    shape-rendering: crispEdges;
+  }
+  
+  .x.axis path {
+    display: none;
+  }
+  
+  .line {
+    fill: none;
+    stroke: steelblue;
+    stroke-width: 1.5px;
+  }
+ 
+  .legend {
+    fill: white;
+    stroke:black;
+  }
+
+  h1 {
+    text-align: center;
+  }
+  
+  </style>
+  <body>
+  <h1>JavaScript Trends via JS Weekly</h1>
+  <script src="http://d3js.org/d3.v3.js"></script>
+  <script src="d3.legend.js"></script>
+  <script src="./moment.js"></script>
+  <script src="./underscore.js"></script>
+ 
+  <script>
+  var wordsToPlot = [
+   'react',
+   'node,node.js',
+   'es6,ecmascript 6',
+   'jquery',
+   'backbone,backbone.js',
+   'html5',
+   'babel',
+   'angular,angular.js',
+   'ember,ember.js',
+   'coffeescript'
+  ]
+ 
+  var margin = {top: 20, right: 80, bottom: 30, left: 50},
+      width = 1200 - margin.left - margin.right,
+      height = 500 - margin.top - margin.bottom;
+  
+  var parseDate = d3.time.format("%Y%m%d").parse;
+  
+  var x = d3.time.scale()
+      .range([0, width]);
+  
+  var y = d3.scale.linear().range([height, 0]);
+ 
+  var color = d3.scale.category10();
+  
+  var xAxis = d3.svg.axis()
+      .scale(x)
+      .orient("bottom");
+  
+  var yAxis = d3.svg.axis()
+      .scale(y)
+      .orient("left");
+  
+  var line = d3.svg.line()
+     .x(function(d) {
+       return x(new Date(d.date));
+     })
+     .y(function(d) {
+       return y(d.citations);
+     });
+
+  var area = d3.svg.area()
+    .x(function(d) {
+      return x(new Date(d.date))
+    })
+    .y0(height)
+    .y1(function(d) {
+      return y(d.citations)
+    });
+  
+  var svg = d3.select("body").append("svg")
+      .attr("width", width + margin.left + margin.right)
+      .attr("height", height + margin.top + margin.bottom)
+    .append("g")
+      .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+  
+  d3.json("/summary.json", function(data) {
+    color.domain(d3.keys(data[0]).filter(function(key) { return key !== "date"; }));
+
+    data.forEach(function(d) {
+      d.date = moment(d.date).format('YYYY/MM/DD');
+    });
+  
+    frameworks = []
+    for (j = 0; j < data.length -1; j++) {
+      d = data[j]
+      var names = Object.keys(d.summary)
+      for (i = 0; i < names.length - 1; i++) {
+        name = names[i]
+        namesInNewData = _(frameworks).find(function(d) {return d.name == name})
+        if (namesInNewData == undefined) {
+          frameworks.push({'name': name, 
+            'values': [{'date': d.date, 'citations': d.summary[name]}]})
+        }
+        else {
+          namesInNewData['values'].push({'date': d.date, 'citations': d.summary[name]})
+        }
+      }
+    }
+
+    frameworks = frameworks.filter(function(f){
+      return wordsToPlot.indexOf(f.name) !== -1
+    })
+
+    x.domain(d3.extent(data, function(d) { return new Date(d.date); }));
+  
+    y.domain([0,
+      d3.max(frameworks, function(c) { return d3.max(c.values, function(v) {  return v.citations; }); })
+    ]);
+  
+    svg.append("g")
+        .attr("class", "x axis")
+        .attr("transform", "translate(0," + height + ")")
+        .call(xAxis);
+  
+    svg.append("g")
+        .attr("class", "y axis")
+        .call(yAxis)
+      .append("text")
+        .attr("transform", "rotate(-90)")
+        .attr("y", 6)
+        .attr("dy", ".71em")
+        .style("text-anchor", "end")
+        .text("Citations");
+  
+    var counts = svg.selectAll(".counts")
+        .data(frameworks)
+        .enter()
+         .append("g")
+         .attr("class", "counts");
+    
+    counts.append("path")
+        .attr("class", "line")
+        .attr("data-legend", function(d) { return d.name })
+        .attr("d", function(d) { return area(d.values); })
+        .style("stroke-width", 0)
+        .style("fill", function(d) { return color(d.name); })
+        .style("opacity", 0.7)
+    
+    var legend = svg.append("g")
+      .attr("class","legend")
+      .attr("transform","translate(900,30)")
+      .style("font-size","12px")
+      .call(d3.legend)
+  
+  });
+ 
+ </script> 
